@@ -1,0 +1,62 @@
+name: Build and deploy
+
+on:
+  workflow_dispatch: { }
+  push:
+    branches:
+      - main
+    paths:
+      - '*/**.js'
+      - '*/**.vue'
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions/setup-node@v2.1.2
+
+      - name: Install dependencies
+        run: npm ci
+
+  release:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions/setup-node@v2.1.2
+
+      - run: git config user.email "robot@github.actions"
+      - run: git config user.name "CI"
+
+      - name: Login to GitHub Packages Docker Registry
+        uses: docker/login-action@v1
+        with:
+          registry: ghcr.io
+          username: ${{ github.repository_owner }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - run: echo "image=ghcr.io/tuuturu/assert-frontend" >> $GITHUB_ENV
+      - run: echo "version=$(npm version patch | sed 's/^.//')" >> $GITHUB_ENV
+
+      - name: Build and push Docker images
+        run: docker build --tag ${{ env.image }}:${{ env.version }} .
+
+      - name: Push docker image
+        run: docker push ${{ env.image }}:${{ env.version }}
+
+
+      - run: git reset HEAD~1 # Needed for commit version bump to find the changes for some reason
+
+      - run: |
+          sed -i 's~${{ env.image }}:.*~${{ env.image }}:${{ env.version }}~' \
+          k8s/deployment.yaml
+
+      - name: Commit version bump
+        uses: EndBug/add-and-commit@v4
+        with:
+          author_name: 'Automated Version Bump'
+          author_email: 'action@github.com'
+          add: 'package.json package-lock.json k8s/deployment.yaml'
+          message: "📦 Bump version to ${{ env.version }}"
