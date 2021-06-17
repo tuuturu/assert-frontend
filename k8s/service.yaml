@@ -1,0 +1,13 @@
+apiVersion: v1
+kind: Service
+
+metadata:
+  name: assert-frontend
+
+spec:
+  type: ClusterIP
+  selector:
+    app: assert-frontend
+  ports:
+  - port: 80
+    targetPort: 80
