@@ -11,6 +11,7 @@ on:
 
 jobs:
   release:
+    name: Build release
     runs-on: ubuntu-latest
 
     outputs:
@@ -61,6 +62,7 @@ jobs:
           message: "📦 Bump version to ${{ env.version }}"
 
   deploy:
+    name: Dispatch deployment signal
     runs-on: ubuntu-latest
     needs:
       - release
@@ -74,4 +76,4 @@ jobs:
           token: ${{ secrets.TUUTURU_INFRASTRUCTURE_CD_PAT }}
           repository: tuuturu/infrastructure
           event-type: deploy
-          client-payload: '{"appname": ${{ needs.release.outputs.image }}, "appversion": "${{ needs.release.outputs.version }}"}'
+          client-payload: '{"appname": "assert-frontend", "appversion": "${{ needs.release.outputs.version }}"}'
