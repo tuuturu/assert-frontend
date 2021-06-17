@@ -10,18 +10,12 @@ on:
       - '*/**.vue'
 
 jobs:
-  test:
-    runs-on: ubuntu-latest
-
-    steps:
-      - uses: actions/checkout@v2
-      - uses: actions/setup-node@v2.1.2
-
-      - name: Install dependencies
-        run: npm ci
-
   release:
     runs-on: ubuntu-latest
+
+    outputs:
+      image: ${{ steps.imagesetter.outputs.image }}
+      version: ${{ steps.versionsetter.outputs.version }}
 
     steps:
       - uses: actions/checkout@v2
@@ -39,6 +33,11 @@ jobs:
 
       - run: echo "image=ghcr.io/tuuturu/assert-frontend" >> $GITHUB_ENV
       - run: echo "version=$(npm version patch | sed 's/^.//')" >> $GITHUB_ENV
+
+      - run: echo "::set-output name=image::${{ env.image }}"
+        id: imagesetter
+      - run: echo "::set-output name=version::${{ env.version }}"
+        id: versionsetter
 
       - name: Build and push Docker images
         run: docker build --tag ${{ env.image }}:${{ env.version }} .
@@ -60,3 +59,19 @@ jobs:
           author_email: 'action@github.com'
           add: 'package.json package-lock.json k8s/deployment.yaml'
           message: "📦 Bump version to ${{ env.version }}"
+
+  deploy:
+    runs-on: ubuntu-latest
+    needs:
+      - release
+
+    steps:
+      - uses: actions/checkout@v2
+      - name: Repository Dispatch
+        uses: peter-evans/repository-dispatch@ce5485de42c9b2622d2ed064be479e8ed65e76f4
+        with:
+          # A repo scoped GitHub Personal Access Token
+          token: ${{ secrets.TUUTURU_INFRASTRUCTURE_CD_PAT }}
+          repository: tuuturu/infrastructure
+          event-type: deploy
+          client-payload: '{"appname": ${{ needs.release.outputs.image }}, "appversion": "${{ needs.release.outputs.version }}"}'
