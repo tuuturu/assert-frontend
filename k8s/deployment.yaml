@@ -15,5 +15,5 @@ spec:
         app: assert-frontend
     spec:
       containers:
-      - image: ghcr.io/tuuturu/assert-frontend:0.0.2
+      - image: ghcr.io/tuuturu/assert-frontend:0.0.3
         name: assert-frontend
